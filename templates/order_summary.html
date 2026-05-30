@@ -59,10 +59,20 @@
         {% if has_promotion %}
         <tr class="table-success">
             <td colspan="4">
-                <b>🎉 Automatic 10% discount</b>
+                <b>Automatic 10% discount</b>
                 <small class="text-muted">(order over $100)</small>
             </td>
             <td><b class="text-success">-${{ promotion_discount }}</b></td>
+        </tr>
+        {% endif %}
+
+        {% if city_item_discount %}
+        <tr class="table-success">
+            <td colspan="4">
+                <b>Preferred city discount</b>
+                <small class="text-muted">($1 off per item for Bogota and Medellin)</small>
+            </td>
+            <td><b class="text-success">-${{ city_item_discount }}</b></td>
         </tr>
         {% endif %}
 
@@ -85,7 +95,7 @@
     <!-- FUNCIONALIDAD 2: Banner informativo si está cerca del umbral -->
     {% if not has_promotion %}
     <div class="alert alert-info mt-3" role="alert">
-        💡 Add ${{ promotion_missing }} more to your cart to get an automatic <strong>10% discount</strong>!
+        Add ${{ promotion_missing }} more to your cart to get an automatic <strong>10% discount</strong>!
     </div>
     {% endif %}
 

@@ -50,6 +50,7 @@ class CheckoutView(View):
                 # FUNCIONALIDAD 2: pasar info de promoción al template
                 'has_promotion': order.has_promotion(),
                 'promotion_discount': order.get_promotion_discount(),
+                'city_item_discount': order.get_city_item_discount(),
             }
 
             shipping_address_qs = Address.objects.filter(
@@ -152,6 +153,14 @@ class CheckoutView(View):
                             self.request, "Please fill in the required shipping address fields")
                         return redirect('core:checkout')
 
+                if not order.meets_city_minimum_purchase():
+                    messages.warning(
+                        self.request,
+                        f"Orders shipped to {order.shipping_address.city} must have a subtotal "
+                        f"of at least ${order.get_city_minimum_purchase()}."
+                    )
+                    return redirect('core:checkout')
+
                 use_default_billing = form.cleaned_data.get('use_default_billing')
                 same_billing_address = form.cleaned_data.get('same_billing_address')
 
@@ -233,6 +242,7 @@ class PaymentView(View):
                 # FUNCIONALIDAD 2: pasar info de promoción al template de pago
                 'has_promotion': order.has_promotion(),
                 'promotion_discount': order.get_promotion_discount(),
+                'city_item_discount': order.get_city_item_discount(),
             }
             userprofile = self.request.user.userprofile
             if userprofile.one_click_purchasing:
@@ -357,6 +367,7 @@ class OrderSummaryView(LoginRequiredMixin, View):
                 'object': order,
                 'has_promotion': order.has_promotion(),
                 'promotion_discount': order.get_promotion_discount(),
+                'city_item_discount': order.get_city_item_discount(),
                 'promotion_missing': round(max(100 - subtotal, 0), 2),  # ← nueva línea
             }
             return render(self.request, 'order_summary.html', context)

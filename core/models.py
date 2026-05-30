@@ -37,6 +37,18 @@ ALLOWED_CITIES = [
 PROMOTION_THRESHOLD = 100   # USD — si el carrito supera este valor
 PROMOTION_DISCOUNT = 0.10   # 10% de descuento automático
 
+# ============================================================
+# REGLAS DE NEGOCIO COMPUESTAS
+# ============================================================
+MINIMUM_PURCHASE_BY_CITY = {
+    'bogota': 50,
+    'medellin': 50,
+    'cali': 40,
+}
+
+CITY_ITEM_DISCOUNT_CITIES = ['bogota', 'medellin']
+CITY_ITEM_DISCOUNT_AMOUNT = 1
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(
@@ -159,12 +171,46 @@ class Order(models.Model):
         """Retorna True si aplica la promoción automática."""
         return self.get_subtotal() > PROMOTION_THRESHOLD
 
+    def get_shipping_city(self):
+        """Retorna la ciudad de envio normalizada para reglas de negocio."""
+        if not self.shipping_address or not self.shipping_address.city:
+            return ''
+        return self.shipping_address.city.strip().lower()
+
+    def get_total_quantity(self):
+        """Total de unidades del carrito."""
+        total = 0
+        for order_item in self.items.all():
+            total += order_item.quantity
+        return total
+
+    def get_city_item_discount(self):
+        """
+        Descuento acumulable por ciudad.
+        Bogota y Medellin reciben USD 1 de descuento por cada articulo.
+        """
+        if self.get_shipping_city() in CITY_ITEM_DISCOUNT_CITIES:
+            return round(self.get_total_quantity() * CITY_ITEM_DISCOUNT_AMOUNT, 2)
+        return 0
+
+    def get_city_minimum_purchase(self):
+        """Monto minimo de compra requerido para ciudades especiales."""
+        return MINIMUM_PURCHASE_BY_CITY.get(self.get_shipping_city())
+
+    def meets_city_minimum_purchase(self):
+        """Valida el subtotal minimo cuando la ciudad tiene regla especial."""
+        minimum_purchase = self.get_city_minimum_purchase()
+        if minimum_purchase is None:
+            return True
+        return self.get_subtotal() >= minimum_purchase
+
     def get_total(self):
-        """Total final: subtotal - cupón - promoción automática."""
+        """Total final: subtotal - cupon - promocion automatica - descuento por ciudad."""
         total = self.get_subtotal()
         if self.coupon:
             total -= self.coupon.amount
         total -= self.get_promotion_discount()
+        total -= self.get_city_item_discount()
         return max(total, 0)  # El total nunca puede ser negativo
 
 
